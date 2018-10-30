@@ -15,8 +15,9 @@ env_name="dada2"
 private_r_lib="$HOME/R"
 r_version=""
 downstream=false
+base=true
 
-while getopts "n:e:r:h" opt; do
+while getopts "n:e:r:d:h" opt; do
     #echo "parsing arg $opt"
     
     case "$opt" in
@@ -24,7 +25,7 @@ while getopts "n:e:r:h" opt; do
             echo "\
 		usage:
 		------
-		create-dada2_conda_env [ -n ENV_NAME ] [ -e EXTRA_R ] [ -r R_VERSION ] [ -d true/false ] [ -h ]
+		create-dada2_conda_env [ -n ENV_NAME ] [ -e EXTRA_R ] [ -r R_VERSION ] [ -d yes|no|only ] [ -h ]
 
 		description:
 		------------
@@ -52,8 +53,7 @@ while getopts "n:e:r:h" opt; do
 					chooses.
 
 		-d BOOL		Whether to install packages for downstream 
-					analysis such as `phyloseq`. Must take value
-					"true" or "false". 
+					analysis such as `phyloseq`. Values are yes|no|only
 					
 					The downstream packages are:
 
@@ -102,6 +102,26 @@ while getopts "n:e:r:h" opt; do
 			;;
 		d)
 			downstream=$OPTARG
+			case "$downstream" in
+				yes)
+					base=true
+					downstream=true
+					;;
+				no)
+					base=true
+					downstream=false
+					;;
+				only)
+					base=false
+					downstream=true
+					;;
+				?)
+					echo "-d takes one of [yes|no|only]. Please see (-h)."
+					exit 1
+					;;
+			esac
+			echo "base: $base"
+			echo "downstream: $downstream"
 			;;
         ?)
             echo "Error: did not recognize option, ${OPTARG}."
@@ -113,11 +133,18 @@ while getopts "n:e:r:h" opt; do
 
 done
 
-if [[ $downstream != "true" && $downstream != "false" ]]; then
-	echo "You must specify either \"true\" or \"false\" for the
-downstream parameter (-d). Please try (-h) for help:"
-	exit 1
+if [[ "$base" == "true" ]]; then
+	echo "base"
+else
+	echo "no base"
 fi
+
+if [[ "$downstream" == "true" ]]; then
+	echo "downstream"
+else
+	echo "no downstream"
+fi
+
 
 if [[ r_version=="" ]]; then
 	r_base="=$r_version"
@@ -210,12 +237,31 @@ r-testthat
 r-whisker
 "
 
-echo "installing dada2 pkgs: `echo $dada2_pkg_list | sed 's/ /\n  \* /g; s/^/\n  * /'`"
-run_cmd conda install $dada2_pkg_list -y
+if [[ "$base" == "true" ]]; then
+	echo "installing base"
+	echo "installing dada2 pkgs: `echo $dada2_pkg_list | sed 's/ /\n  \* /g; s/^/\n  * /'`"
+	run_cmd conda install $dada2_pkg_list -y
+fi
 
-if [[ $downstream == true ]]; then
+if [[ "$downstream" == "true" ]]; then
+	echo "installing downstream"
 	echo "installing downstream pkgs: `echo $downstream_pkg_list | sed 's/ /\n  \* /g; s/^/\n  * /'`"
 	run_cmd conda install $downstream_pkg_list -y
+	
+	echo "Installing items needed that are not in conda"
+	echo "DECIPHER"
+	run_cmd Rscript -e "\"source('https://bioconductor.org/biocLite.R'); biocLite('DECIPHER', lib='$private_r_lib');\""	
+	echo "msa"
+	run_cmd Rscript -e "\"source('https://bioconductor.org/biocLite.R'); biocLite('msa', lib='$private_r_lib');\""	
+	echo "ggnetwork"
+	run_cmd Rscript -e "\"install.packages('ggnetwork', lib='"$private_r_lib"', repos='http://cran.us.r-project.org')\""
+	echo "intergraph"
+	run_cmd Rscript -e "\"install.packages('intergraph', lib='"$private_r_lib"', repos='http://cran.us.r-project.org')\""
+	echo "graphtest functions"
+	run_cmd Rscript -e "\"source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/graphtest-functions.R')\""
+	echo "package-doc"
+	run_cmd Rscript -e "\"source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/package-doc.R')\""
+
 fi
 
 echo "updating environment"
@@ -224,15 +270,5 @@ run_cmd conda clean --all -y
 
 echo "reinstalling krb5"
 run_cmd conda install krb5 -y
-
-echo "Installing items needed that are not in conda"
-echo "ggnetwork"
-run_cmd Rscript -e "install.packages('ggnetwork', lib='$private_r_lib', repos='http://cran.us.r-project.org')"
-echo "intergraph"
-run_cmd Rscript -e "install.packages('intergraph', lib='$private_r_lib', repos='http://cran.us.r-project.org')"
-echo "graphtest functions"
-run_cmd Rscript -e "source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/graphtest-functions.R')"
-echo "package-doc"
-run_cmd Rscript -e "source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/package-doc.R')"
 
 exit 0
