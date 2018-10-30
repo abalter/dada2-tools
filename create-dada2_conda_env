@@ -1,0 +1,238 @@
+#!/bin/bash
+
+### https://raw.githubusercontent.com/abalter/microbiome-16s/master/create-dada2_conda_env.sh
+
+### Utility for running commands.
+run_cmd()
+{
+	cmd=$@
+	echo "executing command:  $cmd"
+	eval "$cmd"
+}
+
+### Set default values
+env_name="dada2"
+private_r_lib="$HOME/R"
+r_version=""
+downstream=false
+
+while getopts "n:e:r:h" opt; do
+    #echo "parsing arg $opt"
+    
+    case "$opt" in
+        h)
+            echo "\
+		usage:
+		------
+		create-dada2_conda_env [ -n ENV_NAME ] [ -e EXTRA_R ] [ -r R_VERSION ] [ -d true/false ] [ -h ]
+
+		description:
+		------------
+
+		Builds a conda environment with the DADA2 package and some additional ones used in
+		the F1000 workflow.
+
+		optional arguments:
+		-------------------
+		-h			Print this help message and exit.
+
+		-n ENV_NAME	Name for the environment (default: dada2)
+
+		-e EXTRA_R	Location to install R packages that cannot
+					be installed with conda. These should not be
+					installed in the conda path because this can 
+					result in conflicts. (default: $HOME/R)
+
+		-r R_VERSION
+					Specify the version of R to build on. DADA2
+					will build under R v3.5.1. However some other 
+					common bioconductor packages will only build
+					with R v3.4.1. So choose which one you want.
+					If not specified, defaults to whatever conda
+					chooses.
+
+		-d BOOL		Whether to install packages for downstream 
+					analysis such as `phyloseq`. Must take value
+					"true" or "false". 
+					
+					The downstream packages are:
+
+					bioconductor-phyloseq
+					DECIPHER
+					msa
+					r-phangorn
+					r-structssi
+					r-caret 
+					r-e1071
+					r-devtools
+					r-shiny
+					r-miniui
+					r-randomforest
+					r-dplyr
+					r-ggrepel
+					r-nlme
+					r-reshape2
+					r-pma
+					r-scales
+					bioconductor-genefilter
+					bioconductor-deseq2
+					r-data.table
+					r-httr
+					r-jsonlite
+					r-mockery
+					r-praise
+					r-rstudioapi
+					r-testthat
+					r-whisker
+            "
+            exit 2
+            ;;
+		n)
+			env_name=$OPTARG
+			;;
+		e)  
+			private_r_lib=$OPTARG
+			if [[ ! -d "$private_r_lib" ]]; then
+				mkdir "$private_r_lib"
+			fi
+
+			;;
+		r)  
+			r_version=$OPTARG
+			;;
+		d)
+			downstream=$OPTARG
+			;;
+        ?)
+            echo "Error: did not recognize option, ${OPTARG}."
+            echo "Please try -h for help."
+            run_cmd=false
+            exit 1
+            ;;
+    esac
+
+done
+
+if [[ $downstream != "true" && $downstream != "false" ]]; then
+	echo "You must specify either \"true\" or \"false\" for the
+downstream parameter (-d). Please try (-h) for help:"
+	exit 1
+fi
+
+if [[ r_version=="" ]]; then
+	r_base="=$r_version"
+else
+	r_base=""
+fi
+
+conda_home=$(which conda | sed 's/\/bin.*$//')
+echo "conda home: $conda_home"
+conda_sh="$conda_home/etc/profile.d/conda.sh"
+echo "activating $conda_sh"
+conda_env_dir="$conda_home/envs"
+
+source "$conda_sh"
+
+if [[ `conda env list | grep "$env_name"` != '' ]]; then
+  echo "dada2 environment $env_name exists -- removing"
+  conda env remove -n $env_name -y
+else
+  echo "no dada2 environment $env_name"
+fi
+
+echo "creating dada2 environment"
+run_cmd conda create -n $env_name -y
+
+echo "
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+" 
+
+echo "
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+" > "$conda_env_dir/$env_name/.condarc"
+
+
+echo "activating $env_name"
+run_cmd conda activate $env_name
+
+echo "updating environment"
+run_cmd conda update --all -y
+run_cmd conda clean --all -y
+
+dada2_pkg_list="
+r-base"$r_base"
+r-knitr
+r-rmarkdown
+r-ggplot2
+r-gridextra
+r-nlme
+r-data.table
+r-dplyr
+krb5
+curl
+libssh2
+zlib
+bioconductor-dada2
+bioconductor-biocinstaller
+"
+
+downstream_pkg_list="
+bioconductor-phyloseq
+r-phangorn
+r-structssi
+r-caret 
+r-e1071
+r-devtools
+r-shiny
+r-miniui
+r-randomforest
+r-dplyr
+r-ggrepel
+r-nlme
+r-reshape2
+r-pma
+r-scales
+bioconductor-genefilter
+bioconductor-deseq2
+r-data.table
+r-httr
+r-jsonlite
+r-mockery
+r-praise
+r-rstudioapi
+r-testthat
+r-whisker
+"
+
+echo "installing dada2 pkgs: `echo $dada2_pkg_list | sed 's/ /\n  \* /g; s/^/\n  * /'`"
+run_cmd conda install $dada2_pkg_list -y
+
+if [[ $downstream == true ]]; then
+	echo "installing downstream pkgs: `echo $downstream_pkg_list | sed 's/ /\n  \* /g; s/^/\n  * /'`"
+	run_cmd conda install $downstream_pkg_list -y
+fi
+
+echo "updating environment"
+run_cmd conda update --all -y
+run_cmd conda clean --all -y
+
+echo "reinstalling krb5"
+run_cmd conda install krb5 -y
+
+echo "Installing items needed that are not in conda"
+echo "ggnetwork"
+run_cmd Rscript -e "install.packages('ggnetwork', lib='$private_r_lib', repos='http://cran.us.r-project.org')"
+echo "intergraph"
+run_cmd Rscript -e "install.packages('intergraph', lib='$private_r_lib', repos='http://cran.us.r-project.org')"
+echo "graphtest functions"
+run_cmd Rscript -e "source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/graphtest-functions.R')"
+echo "package-doc"
+run_cmd Rscript -e "source('https://raw.githubusercontent.com/cran/phyloseqGraphTest/master/R/package-doc.R')"
+
+exit 0
