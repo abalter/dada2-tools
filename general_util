@@ -1,0 +1,8 @@
+r-base=3.5.1
+r-knitr
+r-rmarkdown
+r-bitops
+r-catools
+r-irkernel
+ipykernel
+
