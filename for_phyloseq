@@ -2,10 +2,4 @@ bioconductor-phyloseq
 bioconductor-biocinstaller
 r-base=3.5.1
 r-phangorn
-r-knitr
-r-rmarkdown
-r-bitops
-r-catools
-r-irkernel
-ipykernel
-
+r-ggplot2

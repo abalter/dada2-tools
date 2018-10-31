@@ -1,7 +1,9 @@
+bioconductor-biocinstaller
 bioconductor-biostrings
-r-rsqlite
-r-dbi
 bioconductor-s4vectors
 bioconductor-iranges
 bioconductor-xvector
+r-base=3.5.1
+r-rsqlite
+r-dbi
 

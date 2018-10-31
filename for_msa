@@ -1,2 +1,6 @@
-biostrings biogenerics iranges s4vectors
-
+bioconductor-bioinstaller
+bioconductor-biostrings 
+bioconductor-biogenerics 
+bioconductor-iranges 
+bioconductor-s4vectors
+r-base=3.5.1
