@@ -1,0 +1,13 @@
+r-pbdzmq
+r-data.table
+r-bh
+r-gdtools
+r-roxygen2
+r-Rcpp
+r-jsonlite
+r-repr
+widgetsnbextension 
+ipywidgets
+
+#jupyter labextension install @jupyter-widgets/jupyterlab-manager
+

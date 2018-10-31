@@ -1,0 +1,10 @@
+bioconductor-dada2
+bioconductor-biocinstaller
+r-knitr
+r-rmarkdown
+r-bitops
+r-catools
+r-base=3.5.1
+r-irkernel
+ipykernel
+
